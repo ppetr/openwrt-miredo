@@ -49,6 +49,8 @@ define Package/miredo/install
 	$(INSTALL_DIR) $(1)/etc/miredo
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/misc/miredo.conf $(1)/etc/miredo
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/misc/client-hook $(1)/etc/miredo
+	$(INSTALL_DIR) $(1)/etc/init.d/
+	$(INSTALL_BIN) ./files/miredo.init $(1)/etc/init.d/miredo
 endef
 
 $(eval $(call BuildPackage,miredo))
