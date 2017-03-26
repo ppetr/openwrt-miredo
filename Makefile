@@ -1,9 +1,8 @@
 # Developer notes:
 #   - Make sure you have gawk, othwerise you get weird syntax errors about "("
-#     and ")".
+#     and ")" when compiling.
 #   - Install ccache, otherwise you'll get configure error:
 #     "C compiler cannot create executables"
-#   - Shared libraries are a pain, so we just compile the binary static.
 
 include $(TOPDIR)/rules.mk
 
@@ -18,9 +17,11 @@ PKG_LICENSE:=GPL-2.0
 PKG_LICENSE_FILES:=COPYING
 PKG_MAINTAINER:=Petr Pudlak <petr.mvd@gmail.com>
 
+PKG_INSTALL:=1
+
 include $(INCLUDE_DIR)/package.mk
 
-CONFIGURE_ARGS+=--with-pic --without-libiconv-prefix --without-libintl-prefix --without-Judy --enable-static --disable-share
+CONFIGURE_ARGS+=--with-pic --without-libiconv-prefix --without-libintl-prefix --without-Judy --enable-shared
 TARGET_CFLAGS+=-std=gnu99 -O3 -ffast-math
 
 define Package/miredo
@@ -39,14 +40,16 @@ define Package/miredo/description
 endef
 
 define Package/miredo/install
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/*.so* $(1)/usr/lib/
 	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/miredo $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/miredo-checkconf $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/miredo $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/miredo-checkconf $(1)/usr/sbin/
 	$(INSTALL_DIR) $(1)/usr/lib/miredo
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/miredo-privproc $(1)/usr/lib/miredo
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/miredo/miredo-privproc $(1)/usr/lib/miredo
 	$(INSTALL_DIR) $(1)/etc/miredo
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/misc/miredo.conf $(1)/etc/miredo
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/misc/client-hook $(1)/etc/miredo
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/etc/miredo/miredo.conf $(1)/etc/miredo
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/etc/miredo/client-hook $(1)/etc/miredo
 	$(INSTALL_DIR) $(1)/etc/init.d/
 	$(INSTALL_BIN) ./files/miredo.init $(1)/etc/init.d/miredo
 endef
