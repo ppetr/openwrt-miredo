@@ -16,11 +16,12 @@ PKG_SHA256SUM:=fa26d2f4a405415833669e2e2e22677b225d8f83600844645d5683535ea43149
 PKG_CAT:=xzcat
 PKG_LICENSE:=GPL-2.0
 PKG_LICENSE_FILES:=COPYING
+PKG_MAINTAINER:=Petr Pudlak <petr.mvd@gmail.com>
 
 include $(INCLUDE_DIR)/package.mk
 
 define Package/miredo
-	SECTION:=base
+	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=Teredo IPv6 tunneling utility
 	URL:=https://www.remlab.net/miredo/
