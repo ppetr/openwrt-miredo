@@ -1,8 +1,10 @@
-# Caveats:
-#   - Make sure you have gawk, othwerise you get weird syntax errors.
+# Developer notes:
+#   - Make sure you have gawk, othwerise you get weird syntax errors about "("
+#     and ")".
 #   - Install ccache, otherwise you'll get configure error:
-#     C compiler cannot create executables
-#   - Shared libraries are a pain, so just compile static.
+#     "C compiler cannot create executables"
+#   - Shared libraries are a pain, so we just compile the binary static.
+
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=miredo
