@@ -11,16 +11,17 @@ PKG_NAME:=miredo
 PKG_VERSION:=1.2.6
 PKG_RELEASE:=1
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/miredo-$(PKG_VERSION)
 PKG_SOURCE:=miredo-1.2.6.tar.xz
 PKG_SOURCE_URL:=https://www.remlab.net/files/miredo/
-PKG_SHA256SUM:=fa26d2f4a405415833669e2e2e22677b225d8f83600844645d5683535ea43149
-PKG_CAT:=xzcat
+PKG_HASH:=fa26d2f4a405415833669e2e2e22677b225d8f83600844645d5683535ea43149
 PKG_LICENSE:=GPL-2.0
 PKG_LICENSE_FILES:=COPYING
 PKG_MAINTAINER:=Petr Pudlak <petr.mvd@gmail.com>
 
 include $(INCLUDE_DIR)/package.mk
+
+CONFIGURE_ARGS+=--with-pic --without-libiconv-prefix --without-libintl-prefix --without-Judy --enable-static --disable-share
+TARGET_CFLAGS+=-std=gnu99 -O3 -ffast-math
 
 define Package/miredo
 	SECTION:=net
@@ -35,12 +36,6 @@ define Package/miredo/description
  operating systems. It includes functional implementations of all components of
  the Teredo specification (client, relay and server). It is meant to provide
  IPv6 connectivity even from behind NAT devices.
-endef
-
-CONFIGURE_VARS += CFLAGS="$(TARGET_CFLAGS) -std=gnu99"
-
-define Build/Configure
-	$(call Build/Configure/Default,--with-pic --without-libiconv-prefix --without-libintl-prefix --without-Judy --enable-static --disable-shared)
 endef
 
 define Package/miredo/install
