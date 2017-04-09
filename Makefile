@@ -1,3 +1,10 @@
+#
+# Copyright (C) 2017 Petr Pudlak
+#
+# This is free software, licensed under the GNU General Public License v2.
+# See /LICENSE for more information.
+#
+
 # Developer notes:
 #   - Make sure you have gawk, othwerise you get weird syntax errors about "("
 #     and ")" when compiling.
