@@ -1,51 +1,16 @@
-diff -ur miredo-1.2.6.orig/configure.ac miredo-1.2.6/configure.ac
---- miredo-1.2.6.orig/configure.ac	2019-08-26 13:48:58.722450234 +0800
-+++ miredo-1.2.6/configure.ac	2019-08-26 13:51:29.089115275 +0800
-@@ -121,6 +121,26 @@
- ])
- 
- 
-+dnl ----[Check if have linux/if_ether.h and netinet/if_ether.h namespace collision]----
-+# Including <linux/if_ether.h> and <netinet/if_ether.h> can cause a namespace collision (musl libc).
-+AC_MSG_CHECKING([for linux/if_ether.h and netinet/if_ether.h namespace collision])
-+SAV_CPPFLAGS="$CPPFLAGS"
-+CPPFLAGS="$CPPFLAGS $kernelinc"
-+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
-+    #include <linux/if_ether.h>
-+    #include <netinet/if_ether.h>
-+  ]])],
-+  [
-+    AC_MSG_RESULT([no])
-+  ],
-+  [
-+    AC_MSG_RESULT([yes])
-+    AC_DEFINE([_HAVE_NETINET_LINUX_IF_ETHER_H_COLLISION_], [ 1 ], [Define to 1 if have linux/if_ether.h followed by netinet/if_ether.h namespace collision])
-+  ])
-+CPPFLAGS="$SAV_CPPFLAGS"
-+
-+
-+
- # Checks for typedefs, structures, and compiler characteristics.
- AS_MESSAGE([checking target characteristics...])
- RDC_PROG_CC_WFLAGS([all extra undef pointer-arith bad-function-cast cast-align write-strings aggregate-return strict-prototypes old-style-definition missing-prototypes missing-noreturn packed nested-externs redundant-decls volatile-register-var])
-diff -ur miredo-1.2.6.orig/libtun6/tun6.c miredo-1.2.6/libtun6/tun6.c
---- miredo-1.2.6.orig/libtun6/tun6.c	2019-08-26 13:48:58.739116900 +0800
-+++ miredo-1.2.6/libtun6/tun6.c	2019-08-26 13:54:21.885780049 +0800
-@@ -53,7 +53,10 @@
- const char os_driver[] = "Linux";
- # define USE_LINUX 1
- 
-+#ifdef _HAVE_NETINET_LINUX_IF_ETHER_H_COLLISION_
-+#define _NETINET_IF_ETHER_H
- # include <linux/if_tun.h> // TUNSETIFF - Linux tunnel driver
-+#endif
- /*
-  * <linux/ipv6.h> conflicts with <netinet/in.h> and <arpa/inet.h>,
-  * so we've got to declare this structure by hand.
 diff -ur miredo-1.2.6.orig/libteredo/debug.h miredo-1.2.6/libteredo/debug.h
 --- miredo-1.2.6.orig/libteredo/debug.h	2019-08-26 13:48:58.735783567 +0800
-+++ miredo-1.2.6/libteredo/debug.h	2019-08-26 14:31:36.389089290 +0800
-@@ -57,7 +57,7 @@
++++ miredo-1.2.6/libteredo/debug.h	2019-08-26 16:20:11.399019397 +0800
+@@ -43,8 +43,6 @@
+ #  ifdef __linux__
+ #   include <errno.h>
+ #   include <assert.h>
+-#   undef PTHREAD_MUTEX_INITIALIZER
+-#   define PTHREAD_MUTEX_INITIALIZER PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP
+ 
+ static inline int
+ d_pthread_mutex_init (pthread_mutex_t *mutex, pthread_mutexattr_t *pattr)
+@@ -57,7 +55,7 @@
  		pthread_mutexattr_init (&attr);
  	}
  
@@ -54,105 +19,3 @@ diff -ur miredo-1.2.6.orig/libteredo/debug.h miredo-1.2.6/libteredo/debug.h
  	int res = pthread_mutex_init (mutex, pattr);
  
  	if (pattr == &attr)
-diff -ur miredo-1.2.6.orig/libteredo/security.c miredo-1.2.6/libteredo/security.c
---- miredo-1.2.6.orig/libteredo/security.c	2019-08-26 13:48:58.735783567 +0800
-+++ miredo-1.2.6/libteredo/security.c	2019-08-26 14:39:38.602417420 +0800
-@@ -71,7 +71,12 @@
- 
- int teredo_init_HMAC (void)
- {
--	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-+        static pthread_mutex_t mutex;
-+        pthread_mutexattr_t mutattr = {0};
-+        pthread_mutexattr_init(&mutattr);
-+        pthread_mutexattr_settype(&mutattr, PTHREAD_MUTEX_RECURSIVE);
-+        pthread_mutex_init(&mutex, &mutattr);
-+        pthread_mutexattr_destroy(&mutattr);
- 	int retval = -1;
- 
- #define return YOU_DONT_MEAN_return
-diff -ur miredo-1.2.6.orig/libteredo/clock.c miredo-1.2.6/libteredo/clock.c
---- miredo-1.2.6.orig/libteredo/clock.c	2019-08-26 13:48:58.735783567 +0800
-+++ miredo-1.2.6/libteredo/clock.c	2019-08-26 15:23:45.835722259 +0800
-@@ -79,15 +79,28 @@
- 		.value = 0,
- 		.active = false
- 	};
-+        // static const pthread_mutex_t lck_mutex;
-+        static int lck_init = 1;
- 	static struct
- 	{
- 		pthread_mutex_t lock;
- 		clockid_t       id;
- 		bool            present;
--	} priv = { PTHREAD_MUTEX_INITIALIZER, CLOCK_REALTIME, false };
-+	} priv;  
- 
- 	teredo_clock_t value;
- 
-+        if (lck_init){
-+            pthread_mutexattr_t mutattr = {0};
-+            lck_init = 0;
-+            pthread_mutexattr_init(&mutattr);
-+            pthread_mutexattr_settype(&mutattr, PTHREAD_MUTEX_RECURSIVE);
-+            pthread_mutex_init(&priv.lock, &mutattr);
-+            pthread_mutexattr_destroy(&mutattr);
-+            priv.id = CLOCK_REALTIME;
-+            priv.present = false;
-+        }
-+
- 	pthread_mutex_lock (&priv.lock);
- 	if (!priv.present)
- 	{
-diff -ur miredo-1.2.6.orig/libteredo/server.c miredo-1.2.6/libteredo/server.c
---- miredo-1.2.6.orig/libteredo/server.c	2019-08-26 13:48:58.735783567 +0800
-+++ miredo-1.2.6/libteredo/server.c	2019-08-26 15:30:26.799051297 +0800
-@@ -55,10 +55,10 @@
- #include "debug.h"
- #include "packets.h"
- 
--static pthread_mutex_t raw_mutex = PTHREAD_MUTEX_INITIALIZER;
-+static pthread_mutex_t raw_mutex; 
- static int raw_fd; // raw IPv6 socket
- static unsigned raw_users = 0;
--
-+static int raw_mutex_init = 1;
- struct teredo_server
- {
- 	pthread_t t1, t2;
-@@ -71,6 +71,18 @@
- 	union teredo_addr lladdr; // server link-local IPv6 address
- };
- 
-+
-+static void init_raw_mutex(){
-+    if (raw_mutex_init){
-+        pthread_mutexattr_t mutattr = {0};
-+        pthread_mutexattr_init(&mutattr);
-+        pthread_mutexattr_settype(&mutattr, PTHREAD_MUTEX_RECURSIVE);
-+        pthread_mutex_init(&raw_mutex, &mutattr);
-+        pthread_mutexattr_destroy(&mutattr);
-+        raw_mutex_init = 0;
-+    }
-+}
-+
- /**
-  * Sends a Teredo-encapsulated Router Advertisement.
-  */
-@@ -489,6 +501,7 @@
- 	(void)bindtextdomain (PACKAGE_NAME, LOCALEDIR);
- 
- 	/* Initializes shared raw IPv6 socket */
-+        init_raw_mutex();
- 	pthread_mutex_lock (&raw_mutex);
- 	if (raw_users == UINT_MAX) /* integer overflow */
- 	{
-@@ -631,7 +644,7 @@
- 	teredo_close (s->fd_primary);
- 	teredo_close (s->fd_secondary);
- 	free (s);
--
-+        init_raw_mutex();
- 	pthread_mutex_lock (&raw_mutex);
- 	if (--raw_users == 0)
- 		close (raw_fd);
