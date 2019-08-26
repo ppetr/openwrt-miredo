@@ -1,0 +1,44 @@
+diff -ur miredo-1.2.6.orig/configure.ac miredo-1.2.6/configure.ac
+--- miredo-1.2.6.orig/configure.ac	2019-08-26 13:48:58.722450234 +0800
++++ miredo-1.2.6/configure.ac	2019-08-26 13:51:29.089115275 +0800
+@@ -121,6 +121,26 @@
+ ])
+ 
+ 
++dnl ----[Check if have linux/if_ether.h and netinet/if_ether.h namespace collision]----
++# Including <linux/if_ether.h> and <netinet/if_ether.h> can cause a namespace collision (musl libc).
++AC_MSG_CHECKING([for linux/if_ether.h and netinet/if_ether.h namespace collision])
++SAV_CPPFLAGS="$CPPFLAGS"
++CPPFLAGS="$CPPFLAGS $kernelinc"
++AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
++    #include <linux/if_ether.h>
++    #include <netinet/if_ether.h>
++  ]])],
++  [
++    AC_MSG_RESULT([no])
++  ],
++  [
++    AC_MSG_RESULT([yes])
++    AC_DEFINE([_HAVE_NETINET_LINUX_IF_ETHER_H_COLLISION_], [ 1 ], [Define to 1 if have linux/if_ether.h followed by netinet/if_ether.h namespace collision])
++  ])
++CPPFLAGS="$SAV_CPPFLAGS"
++
++
++
+ # Checks for typedefs, structures, and compiler characteristics.
+ AS_MESSAGE([checking target characteristics...])
+ RDC_PROG_CC_WFLAGS([all extra undef pointer-arith bad-function-cast cast-align write-strings aggregate-return strict-prototypes old-style-definition missing-prototypes missing-noreturn packed nested-externs redundant-decls volatile-register-var])
+diff -ur miredo-1.2.6.orig/libtun6/tun6.c miredo-1.2.6/libtun6/tun6.c
+--- miredo-1.2.6.orig/libtun6/tun6.c	2019-08-26 13:48:58.739116900 +0800
++++ miredo-1.2.6/libtun6/tun6.c	2019-08-26 13:54:21.885780049 +0800
+@@ -53,7 +53,10 @@
+ const char os_driver[] = "Linux";
+ # define USE_LINUX 1
+ 
++#ifdef _HAVE_NETINET_LINUX_IF_ETHER_H_COLLISION_
++#define _NETINET_IF_ETHER_H
+ # include <linux/if_tun.h> // TUNSETIFF - Linux tunnel driver
++#endif
+ /*
+  * <linux/ipv6.h> conflicts with <netinet/in.h> and <arpa/inet.h>,
+  * so we've got to declare this structure by hand.
