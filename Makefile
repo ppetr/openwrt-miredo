@@ -28,15 +28,15 @@ PKG_INSTALL:=1
 
 include $(INCLUDE_DIR)/package.mk
 
-CONFIGURE_ARGS+=--with-pic --without-libiconv-prefix --without-libintl-prefix --without-Judy --enable-shared
-TARGET_CFLAGS+=-std=gnu99 -O3 -ffast-math
+CONFIGURE_ARGS+=--with-pic --without-libiconv-prefix --without-libintl-prefix --without-Judy --enable-shared --disable-binreloc ac_cv_file__proc_self_maps=yes
+TARGET_CFLAGS+=-std=gnu99 -O3 -ffast-math -Wno-error=format-security
 
 define Package/miredo
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=Teredo IPv6 tunneling utility
 	URL:=https://www.remlab.net/miredo/
-	DEPENDS:=+libpthread +librt +ip +kmod-ipv6 +kmod-tun
+	DEPENDS:=+libpthread +librt +ip +kmod-tun +libcap
 endef
 
 define Package/miredo/description
@@ -44,6 +44,12 @@ define Package/miredo/description
  operating systems. It includes functional implementations of all components of
  the Teredo specification (client, relay and server). It is meant to provide
  IPv6 connectivity even from behind NAT devices.
+endef
+
+
+define Build/Configure
+	( cd $(PKG_BUILD_DIR); ./autogen.sh )
+	$(call Build/Configure/Default)
 endef
 
 define Package/miredo/install
